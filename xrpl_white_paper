@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ripple 시스템 심층 분석 대시보드</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #2c3e50;
+            --primary-light: #34495e;
+            --primary-lighter: #5a6c7d;
+            --primary-lightest: #7f8c8d;
+            --accent-color: #3498db;
+            --accent-light: #5dade2;
+            --accent-lighter: #85c1e9;
+            --background-light: #ecf0f1;
+            --background-lighter: #f8f9fa;
+            --text-dark: #2c3e50;
+            --text-medium: #5a6c7d;
+            --text-light: #7f8c8d;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--background-light) 0%, var(--background-lighter) 100%);
+            min-height: 100vh;
+            color: var(--text-dark);
+        }
+
+        .dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: var(--text-dark);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            color: var(--text-medium);
+        }
+
+        .tabs {
+            display: flex;
+            background: rgba(255,255,255,0.9);
+            border-radius: 15px;
+            padding: 5px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(44, 62, 80, 0.1);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--text-medium);
+            font-weight: 500;
+        }
+
+        .tab.active {
+            background: var(--primary-color);
+            color: white;
+            box-shadow: 0 4px 15px rgba(44, 62, 80, 0.2);
+        }
+
+        .tab:hover:not(.active) {
+            background: var(--background-light);
+            color: var(--primary-color);
+        }
+
+        .content {
+            display: none;
+        }
+
+        .content.active {
+            display: block;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: rgba(255,255,255,0.95);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(44, 62, 80, 0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 1px solid var(--background-light);
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(44, 62, 80, 0.12);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            margin-right: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--background-light);
+        }
+
+        .metric:last-child {
+            border-bottom: none;
+        }
+
+        .metric-label {
+            font-weight: 500;
+            color: var(--text-medium);
+        }
+
+        .metric-value {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--background-light);
+            border-radius: 4px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color), var(--primary-light));
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .consensus-diagram {
+            background: var(--background-lighter);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid var(--background-light);
+        }
+
+        .node {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            margin: 10px;
+            position: relative;
+        }
+
+        .network-visualization {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            min-height: 200px;
+        }
+
+        .connection {
+            position: absolute;
+            height: 2px;
+            background: var(--primary-lighter);
+            opacity: 0.5;
+        }
+
+        .issue-alert {
+            background: var(--danger-color);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+
+        .recommendation {
+            background: var(--success-color);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(44, 62, 80, 0.08);
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--background-light);
+        }
+
+        .comparison-table th {
+            background: var(--primary-color);
+            color: white;
+            font-weight: 600;
+        }
+
+        .comparison-table tr:hover {
+            background: var(--background-lighter);
+        }
+
+        .chart-container {
+            height: 300px;
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 10px rgba(44, 62, 80, 0.08);
+        }
+
+        .security-warning {
+            background: var(--warning-color);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+
+        .key-finding {
+            background: var(--accent-color);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+
+        .fork-analysis {
+            background: var(--background-lighter);
+            border: 1px solid var(--background-light);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .math-formula {
+            background: var(--background-lighter);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            border-left: 4px solid var(--primary-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h1>🔗 Ripple 시스템 심층 분석 대시보드</h1>
+            <p>2015년 Armknecht 등의 연구 결과를 바탕으로 한 종합 분석</p>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('overview')">📊 개요</div>
+            <div class="tab" onclick="showTab('consensus')">⚡ 합의 프로토콜</div>
+            <div class="tab" onclick="showTab('security')">🔒 보안 분석</div>
+            <div class="tab" onclick="showTab('usage')">📈 사용 현황</div>
+            <div class="tab" onclick="showTab('comparison')">⚖️ 비교 분석</div>
+        </div>
+
+        <!-- 개요 탭 -->
+        <div id="overview" class="content active">
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: var(--accent-color);">🌐</div>
+                        <div class="card-title">Ripple 기본 정보</div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">출시 시기</span>
+                        <span class="metric-value">2013년 1월</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">총 XRP 공급량</span>
+                        <span class="metric-value">1,000억 XRP</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">창립자 보유</span>
+                        <span class="metric-value">20%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Ripple Labs 보유</span>
+                        <span class="metric-value">25%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">네트워크 배포용</span>
+                        <span class="metric-value">55%</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: var(--success-color);">💰</div>
+                        <div class="card-title">시장 지표 (2015년 기준)</div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">시가총액</span>
+                        <span class="metric-value">약 9억 6천만 USD</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Bitcoin 대비</span>
+                        <span class="metric-value">약 20%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">일일 신규 계정</span>
+                        <span class="metric-value">약 170개</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">총 계정 수</span>
+                        <span class="metric-value">153,637개</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: var(--danger-color);">⚠️</div>
+                        <div class="card-title">핵심 발견사항</div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">중앙화 정도</span>
+                        <span class="metric-value">높음</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">포크 방지 조건</span>
+                        <span class="metric-value">불충분</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">사용자 활성도</span>
+                        <span class="metric-value">낮음</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">거래량 증가</span>
+                        <span class="metric-value">미미</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="key-finding">
+                <h3>🔍 주요 연구 결과</h3>
+                <ul style="margin: 15px 0; padding-left: 20px; line-height: 1.6;">
+                    <li><strong>중앙화 문제:</strong> Ripple Labs가 대부분의 검증 서버를 운영하여 실질적으로 전체 시스템을 통제</li>
+                    <li><strong>포크 방지 실패:</strong> 현재 20% 교집합 조건으로는 포크를 방지할 수 없음 (40% 이상 필요)</li>
+                    <li><strong>사용률 저조:</strong> 대부분의 계정이 비활성 상태이며 실제 거래는 소수만 진행</li>
+                    <li><strong>보안 취약점:</strong> 검증 서버의 과반수가 악의적이 되면 전체 거래 이력 조작 가능</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 합의 프로토콜 탭 -->
+        <div id="consensus" class="content">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon" style="background: var(--primary-light);">⚡</div>
+                    <div class="card-title">Ripple 합의 프로토콜</div>
+                </div>
+                <p style="margin-bottom: 20px; line-height: 1.6;">
+                    Ripple의 합의 프로토콜은 비동기 라운드 기반으로 작동하며, 3단계를 거쳐 새로운 원장을 생성합니다.
+                </p>
+
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                    <h4>📋 합의 과정 3단계</h4>
+                    <div style="margin: 15px 0;">
+                        <strong>1. 수집 단계 (Collection Phase)</strong>
+                        <ul style="margin: 10px 0; padding-left: 20px;">
+                            <li>검증 서버들이 네트워크에서 거래를 수집</li>
+                            <li>디지털 서명 검증 및 유효성 확인</li>
+                            <li>후보 집합(CS)에 임시 저장</li>
+                        </ul>
+                    </div>
+                    <div style="margin: 15px 0;">
+                        <strong>2. 합의 단계 (Consensus Phase)</strong>
+                        <ul style="margin: 10px 0; padding-left: 20px;">
+                            <li>임계값이 50%에서 시작하여 10%씩 증가</li>
+                            <li>60% → 70% → 80% 순으로 요구 사항 강화</li>
+                            <li>UNL(Unique Node List) 내 서버들만 신뢰</li>
+                        </ul>
+                    </div>
+                    <div style="margin: 15px 0;">
+                        <strong>3. 원장 마감 단계 (Ledger Closing Phase)</strong>
+                        <ul style="margin: 10px 0; padding-left: 20px;">
+                            <li>80% 합의에 도달한 거래들을 원장에 기록</li>
+                            <li>이중 지출 검사 수행</li>
+                            <li>새로운 원장 해시에 서명하여 네트워크에 전파</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="network-visualization">
+                <div class="node">V1</div>
+                <div class="node" style="background: var(--primary-light);">V2</div>
+                <div class="node" style="background: var(--primary-lighter);">V3</div>
+                <div class="node" style="background: var(--accent-color);">V4</div>
+                <div class="node" style="background: var(--primary-lightest);">V5</div>
+            </div>
+
+            <div class="security-warning">
+                <h3>⚠️ 현재 검증 서버 구성의 문제점</h3>
+                <ul style="margin: 15px 0; padding-left: 20px; line-height: 1.6;">
+                    <li><strong>중앙화된 운영:</strong> 5개 중 대부분을 Ripple Labs가 직접 운영</li>
+                    <li><strong>기본 UNL 설정:</strong> 모든 클라이언트가 Ripple Labs 서버를 기본으로 신뢰</li>
+                    <li><strong>단일 실패점:</strong> Ripple Labs가 타협당하면 전체 네트워크 보안 위험</li>
+                    <li><strong>탈중앙화 부족:</strong> 외부 서버는 소수에 불과 (예: Snapswap)</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 보안 분석 탭 -->
+        <div id="security" class="content">
+            <div class="fork-analysis">
+                <h3>🔀 포크 방지 조건 분석</h3>
+                <p style="margin: 15px 0; line-height: 1.6;">
+                    연구진은 Ripple이 주장하는 포크 방지 조건이 불충분함을 증명했습니다.
+                </p>
+
+                <div class="math-formula">
+                    <strong>현재 Ripple 조건 (불충분):</strong><br>
+                    |UNL_u ∩ UNL_v| ≥ 0.2 × max{|UNL_u|, |UNL_v|}
+                </div>
+
+                <div class="math-formula">
+                    <strong>연구진 제안 조건 (필요충분):</strong><br>
+                    |UNL_u ∩ UNL_v| > 0.4 × max{|UNL_u|, |UNL_v|}
+                </div>
+
+                <div style="background: white; padding: 20px; border-radius: 10px; margin: 20px 0; border: 1px solid var(--background-light);">
+                    <h4>반례 시나리오</h4>
+                    <p style="margin: 10px 0; color: var(--text-medium);">두 서버 u, v가 각각 5개의 UNL을 가지고 2개가 교집합인 상황:</p>
+                    <ul style="margin: 10px 0; padding-left: 20px; color: var(--text-medium);">
+                        <li>교집합의 1개 서버는 L1에 투표, 1개 서버는 L2에 투표</li>
+                        <li>u의 나머지 3개 서버는 모두 L1에 투표 (총 80%)</li>
+                        <li>v의 나머지 3개 서버는 모두 L2에 투표 (총 80%)</li>
+                        <li><strong style="color: var(--danger-color);">결과: 포크 발생!</strong></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: var(--danger-color);">🛡️</div>
+                        <div class="card-title">보안 취약점</div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">포크 방지</span>
+                        <span class="metric-value" style="color: var(--danger-color);">불충분</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">이력 조작 가능성</span>
+                        <span class="metric-value" style="color: var(--danger-color);">높음</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">단일 실패점</span>
+                        <span class="metric-value" style="color: var(--danger-color);">존재</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">검증 서버 다양성</span>
+                        <span class="metric-value" style="color: var(--danger-color);">부족</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: var(--success-color);">✅</div>
+                        <div class="card-title">보안 장점</div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">거래 인증</span>
+                        <span class="metric-value" style="color: var(--success-color);">ECDSA 서명</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">투명성</span>
+                        <span class="metric-value" style="color: var(--success-color);">공개 원장</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">이중 지출 방지</span>
+                        <span class="metric-value" style="color: var(--success-color);">검증 가능</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">빠른 확인</span>
+                        <span class="metric-value" style="color: var(--success-color);">수 초 내</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="recommendation">
+                <h3>💡 보안 개선 권고사항</h3>
+                <ul style="margin: 15px 0; padding-left: 20px; line-height: 1.6;">
+                    <li><strong>UNL 교집합 조건:</strong> 최소 40% 이상으로 상향 조정 필요</li>
+                    <li><strong>검증 서버 다양화:</strong> 독립적인 외부 검증 서버 확대</li>
+                    <li><strong>분산 거버넌스:</strong> Ripple Labs의 독점적 통제권 분산</li>
+                    <li><strong>투명한 업데이트:</strong> 프로토콜 변경에 대한 공개적 논의 필요</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 사용 현황 탭 -->
+        <div id="usage" class="content">
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: var(--accent-color);">📊</div>
+                        <div class="card-title">거래 분석 (2013-2015)</div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">총 원장 수</span>
+                        <span class="metric-value">4,645,799개</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">총 거래 수</span>
+                        <span class="metric-value">33,304,766건</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">총 계정 수</span>
+                        <span class="metric-value">153,637개</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">원장 마감 시간</span>
+                        <span class="metric-value">대부분 20초 이내</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: var(--warning-color);">⚡</div>
+                        <div class="card-title">거래 유형별 분포</div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">OfferCreate</span>
+                        <span class="metric-value">60%</span>
+                    </div>
+                    <div class="progress-bar"><div class="progress-fill" style="width: 60%;"></div></div>
+                    <div class="metric">
+                        <span class="metric-label">OfferCancel</span>
+                        <span class="metric-value">20%</span>
+                    </div>
+                    <div class="progress-bar"><div class="progress-fill" style="width: 20%;"></div></div>
+                    <div class="metric">
+                        <span class="metric-label">Payment</span>
+                        <span class="metric-value">15%</span>
+                    </div>
+                    <div class="progress-bar"><div class="progress-fill" style="width: 15%;"></div></div>
+                    <div class="metric">
+                        <span class="metric-label">기타</span>
+                        <span class="metric-value">5%</span>
+                    </div>
+                    <div class="progress-bar"><div class="progress-fill" style="width: 5%;"></div></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: var(--text-light);">😴</div>c3c, #c0392b);">😴</div>
+                        <div class="card-title">사용자 활성도</div>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">비활성 계정</span>
+                        <span class="metric-value">>99%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">일일 평균 지불 거래</span>
+                        <span class="metric-value">33,000건</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">XRP 직접 거래</span>
+                        <span class="metric-value">대다수</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">통화 교환</span>
+                        <span class="metric-value">소수</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="issue-alert">
+                <h3>📉 주요 사용 현황 문제점</h3>
+                <ul style="margin: 15px 0; padding-left: 20px; line-height: 1.6;">
+                    <li><strong>저조한 실제 사용률:</strong> 대부분의 거래가 실제 지불이 아닌 오퍼 생성/취소</li>
+                    <li><strong>비활성 사용자:</strong> 99% 이상의 계정이 매우 적은 수의 거래만 수행</li>
+                    <li><strong>제한적 통화 교환:</strong> 법정통화 거래는 전체의 10%에 불과</li>
+                    <li><strong>Bitcoin 거래 감소:</strong> 2015년 초 Bitcoin 거래가 1% 미만으로 급감</li>
+                    <li><strong>의심스러운 대규모 거래:</strong> 일부 극도로 큰 금액의 거래는 테스트로 추정</li>
+                </ul>
+            </div>
+
+            <div style="background: white; border-radius: 15px; padding: 25px; margin: 20px 0; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+                <h3>📈 거래량 추이 분석</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 20px 0;">
+                    <div style="text-align: center; padding: 15px; background: var(--background-lighter); border-radius: 10px; border: 1px solid var(--background-light);">
+                        <div style="font-size: 2rem; color: var(--accent-color);">📅</div>
+                        <div style="font-weight: 600; margin: 10px 0; color: var(--text-dark);">2013년 초</div>
+                        <div style="color: var(--text-medium);">시스템 출시</div>
+                    </div>
+                    <div style="text-align: center; padding: 15px; background: var(--background-lighter); border-radius: 10px; border: 1px solid var(--background-light);">
+                        <div style="font-size: 2rem; color: var(--success-color);">📈</div>
+                        <div style="font-weight: 600; margin: 10px 0; color: var(--text-dark);">2014년 중반</div>
+                        <div style="color: var(--text-medium);">Bitcoin 거래 증가</div>
+                    </div>
+                    <div style="text-align: center; padding: 15px; background: var(--background-lighter); border-radius: 10px; border: 1px solid var(--background-light);">
+                        <div style="font-size: 2rem; color: var(--danger-color);">📉</div>
+                        <div style="font-weight: 600; margin: 10px 0; color: var(--text-dark);">2014년 후반</div>
+                        <div style="color: var(--text-medium);">거래량 급감</div>
+                    </div>
+                    <div style="text-align: center; padding: 15px; background: var(--background-lighter); border-radius: 10px; border: 1px solid var(--background-light);">
+                        <div style="font-size: 2rem; color: var(--warning-color);">🔄</div>
+                        <div style="font-weight: 600; margin: 10px 0; color: var(--text-dark);">2015년 초</div>
+                        <div style="color: var(--text-medium);">2천만 거래 (대부분 오퍼)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 비교 분석 탭 -->
+        <div id="comparison" class="content">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon" style="background: var(--primary-color);">⚖️</div>
+                    <div class="card-title">Ripple vs Bitcoin 상세 비교</div>
+                </div>
+                
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>비교 항목</th>
+                            <th>Ripple</th>
+                            <th>Bitcoin</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>합의 메커니즘</strong></td>
+                            <td>검증 서버 투표 (80% 임계값)</td>
+                            <td>작업 증명 (PoW)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>거래 확인 시간</strong></td>
+                            <td>수 초 (평균 20초 이내)</td>
+                            <td>평균 1시간 (6블록 확인)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>에너지 소비</strong></td>
+                            <td>매우 낮음</td>
+                            <td>매우 높음</td>
+                        </tr>
+                        <tr>
+                            <td><strong>탈중앙화 정도</strong></td>
+                            <td>낮음 (Ripple Labs 통제)</td>
+                            <td>중간 (소수 마이닝 풀 집중)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>거래 수수료</strong></td>
+                            <td>XRP 소각 (매우 적음)</td>
+                            <td>마이너에게 지급 (변동적)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>총 공급량</strong></td>
+                            <td>고정 (1,000억 XRP)</td>
+                            <td>제한적 (2,100만 BTC)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>통화 교환</strong></td>
+                            <td>네이티브 지원</td>
+                            <td>외부 거래소 필요</td>
+                        </tr>
+                        <tr>
+                            <td><strong>개발 투명성</strong></td>
+                            <td>제한적 (Ripple Labs 주도)</td>
+                            <td>높음 (공개 논의)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: var(--success-color);">✅</div>
+                        <div class="card-title">Ripple의 장점</div>
+                    </div>
+                    <ul style="line-height: 1.8; padding-left: 20px;">
+                        <li><strong>빠른 거래:</strong> 수 초 내 확인 가능</li>
+                        <li><strong>낮은 수수료:</strong> 거의 무료에 가까운 거래 비용</li>
+                        <li><strong>에너지 효율:</strong> PoW 대비 극도로 낮은 전력 소비</li>
+                        <li><strong>통화 교환:</strong> 다양한 법정통화와 암호화폐 간 교환 지원</li>
+                        <li><strong>확장성:</strong> 높은 TPS(초당 거래 처리량) 가능</li>
+                        <li><strong>기업 파트너십:</strong> 은행 및 금융기관과의 협력</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background: var(--danger-color);">❌</div>
+                        <div class="card-title">Ripple의 단점</div>
+                    </div>
+                    <ul style="line-height: 1.8; padding-left: 20px;">
+                        <li><strong>중앙화:</strong> Ripple Labs의 과도한 통제권</li>
+                        <li><strong>보안 취약점:</strong> 포크 방지 조건 불충분</li>
+                        <li><strong>투명성 부족:</strong> 폐쇄적 개발 프로세스</li>
+                        <li><strong>토큰 집중:</strong> 창립자와 회사가 45% 보유</li>
+                        <li><strong>신뢰 의존:</strong> IOU 거래의 강제 실행 불가</li>
+                        <li><strong>낮은 채택률:</strong> 실제 사용자 활동 부족</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="security-warning">
+                <h3>🚨 중요한 구조적 차이점</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;">
+                    <div>
+                        <h4 style="color: var(--primary-color);">Bitcoin의 보안 모델</h4>
+                        <ul style="padding-left: 20px; line-height: 1.6; color: var(--text-medium);">
+                            <li>6개 블록 확인 후 거래 변경 불가</li>
+                            <li>과반수 해시파워 공격 필요</li>
+                            <li>거래 히스토리 변경 매우 어려움</li>
+                            <li>분산된 마이닝 생태계</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 style="color: var(--primary-color);">Ripple의 보안 모델</h4>
+                        <ul style="padding-left: 20px; line-height: 1.6; color: var(--text-medium);">
+                            <li>과반수 검증자가 악의적이면 즉시 위험</li>
+                            <li>전체 거래 히스토리 조작 가능</li>
+                            <li>소수의 검증 서버에 의존</li>
+                            <li>Ripple Labs의 중앙 통제</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 결론 및 권고사항 -->
+        <div style="background: rgba(255,255,255,0.95); border-radius: 20px; padding: 30px; margin: 30px 0; box-shadow: 0 4px 20px rgba(44, 62, 80, 0.08); border: 1px solid var(--background-light);">
+            <h2 style="text-align: center; margin-bottom: 25px; color: var(--primary-color);">📋 연구 결론 및 권고사항</h2>
+            
+            <div class="cards-grid">
+                <div style="background: var(--danger-color); color: white; padding: 20px; border-radius: 15px;">
+                    <h3>🔍 주요 발견사항</h3>
+                    <ul style="padding-left: 20px; line-height: 1.6; margin: 15px 0;">
+                        <li>Ripple의 탈중앙화는 명목상에 불과</li>
+                        <li>포크 방지 메커니즘에 수학적 결함 존재</li>
+                        <li>사용자 활동이 광고된 것보다 현저히 낮음</li>
+                        <li>대부분의 거래가 실제 지불이 아닌 시장 조성</li>
+                    </ul>
+                </div>
+
+                <div style="background: var(--accent-color); color: white; padding: 20px; border-radius: 15px;">
+                    <h3>⚠️ 위험 요소</h3>
+                    <ul style="padding-left: 20px; line-height: 1.6; margin: 15px 0;">
+                        <li>Ripple Labs의 단일 실패점</li>
+                        <li>검증 서버 타협 시 전체 시스템 위험</li>
+                        <li>대규모 토큰 보유로 인한 시장 조작 가능성</li>
+                        <li>투명하지 않은 거버넌스 구조</li>
+                    </ul>
+                </div>
+
+                <div style="background: var(--success-color); color: white; padding: 20px; border-radius: 15px;">
+                    <h3>💡 개선 방안</h3>
+                    <ul style="padding-left: 20px; line-height: 1.6; margin: 15px 0;">
+                        <li>UNL 교집합 조건을 40% 이상으로 상향</li>
+                        <li>독립적인 검증 서버 확대</li>
+                        <li>거버넌스 구조의 탈중앙화</li>
+                        <li>투명한 개발 프로세스 도입</li>
+                    </ul>
+                </div>
+
+                <div style="background: var(--primary-light); color: white; padding: 20px; border-radius: 15px;">
+                    <h3>🔮 미래 전망</h3>
+                    <ul style="padding-left: 20px; line-height: 1.6; margin: 15px 0;">
+                        <li>대규모 배포 전 엄밀한 분석 필요</li>
+                        <li>보안 모델의 근본적 재검토 요구</li>
+                        <li>실제 사용 사례 개발 필요</li>
+                        <li>규제 당국의 면밀한 검토 예상</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div style="background: var(--background-lighter); padding: 25px; border-radius: 15px; margin: 25px 0; border-left: 5px solid var(--primary-color); border: 1px solid var(--background-light);">
+                <h3 style="color: var(--primary-color); margin-bottom: 15px;">📚 연구의 의의</h3>
+                <p style="line-height: 1.6; color: var(--text-medium);">
+                    이 연구는 Ripple 시스템에 대한 최초의 종합적인 학술적 분석으로, 
+                    <strong style="color: var(--primary-color);">4,645,799개의 원장과 33,304,766건의 거래 데이터</strong>를 바탕으로 
+                    시스템의 실제 운영 현황을 객관적으로 평가했습니다. 
+                    연구 결과는 Ripple의 기술적 장점과 함께 구조적 한계를 명확히 드러내며, 
+                    향후 블록체인 기반 결제 시스템 개발에 중요한 시사점을 제공합니다.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showTab(tabName) {
+            // 모든 탭과 컨텐츠 숨기기
+            const tabs = document.querySelectorAll('.tab');
+            const contents = document.querySelectorAll('.content');
+            
+            tabs.forEach(tab => tab.classList.remove('active'));
+            contents.forEach(content => content.classList.remove('active'));
+            
+            // 선택된 탭과 컨텐츠 보이기
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+        }
+
+        // 진행률 바 애니메이션
+        document.addEventListener('DOMContentLoaded', function() {
+            const progressBars = document.querySelectorAll('.progress-fill');
+            progressBars.forEach(bar => {
+                const width = bar.style.width;
+                bar.style.width = '0%';
+                setTimeout(() => {
+                    bar.style.width = width;
+                }, 500);
+            });
+        });
+
+        // 카드 호버 효과
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.card');
+            cards.forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-5px) scale(1.02)';
+                });
+                card.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0) scale(1)';
+                });
+            });
+        });
+    </script>
+</body>
+</html>
