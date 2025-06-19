@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XRP Ledger 합의 방식 인터랙티브 가이드</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Tech -->
+    <!-- Application Structure Plan: 이 SPA는 복잡한 보고서 내용을 사용자가 쉽게 탐색할 수 있도록 4개의 주제별 탭(핵심 개요, 작동 원리, 보안 모델, 거버넌스)으로 구성된 대시보드 구조를 채택했습니다. 사용자는 선형적인 읽기 방식에서 벗어나 자신의 관심사에 따라 자유롭게 정보를 탐색할 수 있습니다. '핵심 개요'는 동적 수치와 비교 차트로 즉각적인 흥미를 유발하고, '작동 원리'는 인터랙티브 다이어그램으로 복잡한 프로세스를 시각화합니다. '보안 모델'은 시뮬레이션을 통해 추상적인 개념을 체험하게 하며, '거버넌스'는 필터링 가능한 표로 방대한 정보를 체계적으로 제공합니다. 이 구조는 사용자 이해도와 참여도를 극대화하기 위해 설계되었습니다. -->
+    <!-- Visualization & Content Choices: 
+        - 핵심 개요: 보고서의 성능 지표 -> 목표: 정보 전달 및 비교 -> 시각화: 동적 카운터 및 Chart.js 막대 차트 -> 상호작용: 즉각적인 시각적 피드백, 툴팁 -> 정당성: 핵심 장점을 빠르고 명확하게 전달.
+        - 작동 원리: 트랜잭션 처리 과정, UNL 개념 -> 목표: 복잡한 프로세스 정리 및 설명 -> 시각화: HTML/CSS 기반 인터랙티브 순서도 -> 상호작용: 클릭 시 상세 설명 표시 -> 정당성: 텍스트 기반 설명을 시각적 단계로 변환하여 이해도 향상.
+        - 보안 모델: BFT 장애 허용(20%) -> 목표: 추상적 보안 개념 설명 -> 시각화: HTML/CSS/JS 기반 검증자 네트워크 시뮬레이터 -> 상호작용: 슬라이더 조작으로 장애 비율 변경 및 결과 확인 -> 정당성: 사용자가 직접 조작하며 '안전한 실패' 개념을 체험.
+        - 거버넌스: 주요 개정안 목록 -> 목표: 정보 조직화 및 탐색 -> 시각화: 필터링/정렬 가능한 HTML 테이블 -> 상호작용: 카테고리 필터링 -> 정당성: 방대한 목록을 사용자가 원하는 기준에 따라 효율적으로 탐색.
+        - 라이브러리: Chart.js 사용. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; }
+        .tab-active { border-color: #2563eb; color: #2563eb; background-color: #eff6ff; }
+        .tab-inactive { border-color: transparent; color: #6b7280; }
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+        .chart-container { position: relative; width: 100%; max-width: 800px; margin-left: auto; margin-right: auto; height: 300px; max-height: 40vh; }
+        @media (min-width: 768px) { .chart-container { height: 400px; } }
+        .step-card.active { border-color: #2563eb; box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.2); }
+        .blinking-dot { animation: blink 1.5s infinite; }
+        @keyframes blink { 50% { opacity: 0.2; } }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div id="app" class="container mx-auto p-4 md:p-8">
+
+        <header class="text-center mb-10">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-2">XRP Ledger 합의 프로토콜</h1>
+            <p class="text-lg text-gray-600 max-w-3xl mx-auto">속도, 효율성, 그리고 탈중앙화된 신뢰의 작동 방식을 인터랙티브하게 탐험해보세요.</p>
+        </header>
+
+        <nav class="mb-8 border-b border-gray-200">
+            <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" id="tabs">
+                <li class="mr-2"><button class="nav-tab inline-block p-4 border-b-2 rounded-t-lg" data-tab="overview">핵심 개요</button></li>
+                <li class="mr-2"><button class="nav-tab inline-block p-4 border-b-2 rounded-t-lg" data-tab="howitworks">작동 원리</button></li>
+                <li class="mr-2"><button class="nav-tab inline-block p-4 border-b-2 rounded-t-lg" data-tab="security">보안 모델</button></li>
+                <li><button class="nav-tab inline-block p-4 border-b-2 rounded-t-lg" data-tab="governance">거버넌스 & 진화</button></li>
+            </ul>
+        </nav>
+
+        <main>
+            <section id="overview" class="content-section">
+                <div class="text-center mb-12">
+                     <h2 class="text-3xl font-bold mb-2">왜 XRPL 합의 방식은 특별할까요?</h2>
+                     <p class="text-gray-600 max-w-2xl mx-auto">XRPL은 기존 블록체인의 한계를 극복하기 위해 설계되었습니다. 작업증명(PoW)이나 지분증명(PoS)과 달리, 투표 기반의 독자적인 합의 프로토콜을 사용하여 압도적인 성능과 효율성을 달성합니다.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 text-center">
+                    <div class="bg-white p-6 rounded-xl shadow-sm">
+                        <p class="text-sm text-blue-600 font-semibold">트랜잭션 속도</p>
+                        <p class="text-4xl font-bold my-2"><span id="speed-stat">0</span>초</p>
+                        <p class="text-gray-500 text-sm">커피 한 잔을 주문하기보다 빠르게 거래가 확정됩니다.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm">
+                        <p class="text-sm text-blue-600 font-semibold">초당 트랜잭션 수 (TPS)</p>
+                        <p class="text-4xl font-bold my-2"><span id="tps-stat">0</span>+</p>
+                        <p class="text-gray-500 text-sm">대규모 글로벌 금융 시스템을 지원할 수 있는 처리량입니다.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm">
+                        <p class="text-sm text-blue-600 font-semibold">평균 수수료</p>
+                        <p class="text-4xl font-bold my-2">$<span id="fee-stat">0</span></p>
+                        <p class="text-gray-500 text-sm">거의 0에 가까운 비용으로 소액 결제도 가능합니다.</p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h3 class="text-2xl font-bold text-center mb-4">주요 합의 메커니즘 성능 비교</h3>
+                    <div class="chart-container">
+                        <canvas id="performance-chart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <section id="howitworks" class="content-section">
+                <div class="text-center mb-12">
+                     <h2 class="text-3xl font-bold mb-2">합의 과정: 단계별 시각화</h2>
+                     <p class="text-gray-600 max-w-3xl mx-auto">트랜잭션이 제출되어 원장에 영구히 기록되기까지의 과정을 단계별로 살펴보세요. 각 단계를 클릭하면 상세한 설명을 볼 수 있습니다.</p>
+                </div>
+                <div class="lg:flex lg:space-x-8">
+                    <div class="lg:w-1/3">
+                        <div id="process-steps" class="space-y-4">
+                            <!-- JS will populate this -->
+                        </div>
+                    </div>
+                    <div class="lg:w-2/3 mt-8 lg:mt-0 bg-white p-6 rounded-xl shadow-sm min-h-[300px]">
+                        <div id="process-details">
+                            <h3 id="process-title" class="text-2xl font-bold mb-4">단계를 선택하세요</h3>
+                            <p id="process-description" class="text-gray-700 leading-relaxed">왼쪽의 단계를 클릭하면 여기에 자세한 설명이 표시됩니다.</p>
+                        </div>
+                    </div>
+                </div>
+                 <div class="mt-12 bg-white p-8 rounded-xl shadow-sm">
+                    <h3 class="text-2xl font-bold text-center mb-4">핵심 개념: 고유 노드 목록 (UNL)</h3>
+                    <p class="text-gray-600 text-center max-w-3xl mx-auto mb-8">XRPL의 탈중앙화된 신뢰는 UNL에 기반합니다. 각 서버 운영자는 자신이 신뢰하는 검증자(Validator)들의 목록을 유지하며, 이 목록들의 높은 중첩(overlap)이 네트워크 분열(포크)을 방지하고 일관성을 유지하는 열쇠입니다.</p>
+                    <div id="unl-visualization" class="flex flex-wrap justify-center items-center gap-4 p-4 min-h-[200px] relative">
+                        <!-- JS will populate this -->
+                    </div>
+                     <p class="text-center text-sm text-gray-500 mt-4">UNL 중첩률이 90% 이상일 때 네트워크 안정성이 보장됩니다.</p>
+                </div>
+            </section>
+
+            <section id="security" class="content-section">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl font-bold mb-2">견고한 보안 모델</h2>
+                    <p class="text-gray-600 max-w-3xl mx-auto">XRPL은 어떻게 악의적인 공격과 노드 장애로부터 네트워크를 보호할까요? 비잔틴 장애 허용(BFT) 시스템의 실제 작동 방식을 시뮬레이션으로 확인해보세요.</p>
+                </div>
+
+                <div class="bg-white p-8 rounded-xl shadow-sm">
+                    <h3 class="text-xl font-bold text-center mb-2">검증자 장애 허용 시뮬레이션</h3>
+                    <p class="text-gray-600 text-center max-w-2xl mx-auto mb-6">슬라이더를 움직여 비활성화되거나 악의적인 검증자 비율을 조절해보세요. 네트워크 상태가 어떻게 변하는지 관찰할 수 있습니다.</p>
+                    
+                    <div class="flex items-center justify-center space-x-4 mb-6">
+                        <span class="text-sm font-medium">0%</span>
+                        <input id="faulty-slider" type="range" min="0" max="40" value="0" class="w-full max-w-md h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        <span class="text-sm font-medium">40%</span>
+                    </div>
+
+                    <div id="network-status-indicator" class="text-center mb-8">
+                        <p class="font-semibold text-lg">네트워크 상태: <span id="status-text" class="px-3 py-1 rounded-full text-white"></span></p>
+                        <p id="status-desc" class="text-sm text-gray-500 mt-2"></p>
+                    </div>
+
+                    <div id="validator-grid" class="grid grid-cols-10 gap-2 max-w-xl mx-auto">
+                        <!-- JS will populate this -->
+                    </div>
+                </div>
+            </section>
+
+            <section id="governance" class="content-section">
+                 <div class="text-center mb-12">
+                     <h2 class="text-3xl font-bold mb-2">지속적인 진화: 개정안 시스템</h2>
+                     <p class="text-gray-600 max-w-3xl mx-auto">XRPL은 정적인 시스템이 아닙니다. '개정안'이라는 온체인 거버넌스 모델을 통해 지속적으로 발전합니다. 주요 프로토콜 변경 사항은 신뢰하는 검증자 80% 이상의 동의를 얻어야만 활성화됩니다.</p>
+                </div>
+                
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <div class="flex justify-center mb-4">
+                        <div id="amendment-filters" class="flex space-x-2 p-1 bg-gray-100 rounded-lg">
+                            <button class="amendment-filter-btn px-4 py-1.5 text-sm font-medium rounded-md" data-filter="all">전체</button>
+                            <button class="amendment-filter-btn px-4 py-1.5 text-sm font-medium rounded-md" data-filter="consensus">합의</button>
+                            <button class="amendment-filter-btn px-4 py-1.5 text-sm font-medium rounded-md" data-filter="feature">기능</button>
+                            <button class="amendment-filter-btn px-4 py-1.5 text-sm font-medium rounded-md" data-filter="security">보안</button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">개정안 이름</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">카테고리</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">주요 변경 사항</th>
+                                </tr>
+                            </thead>
+                            <tbody id="amendments-table" class="bg-white divide-y divide-gray-200">
+                                <!-- JS will populate this -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    const appData = {
+        stats: {
+            speed: { start: 0, end: 4, duration: 1500, decimals: 0 },
+            tps: { start: 0, end: 1500, duration: 2000, decimals: 0 },
+            fee: { start: 0, end: 0.0002, duration: 2500, decimals: 4 },
+        },
+        performanceChart: {
+            labels: ['트랜잭션 속도 (초)', '처리량 (TPS)', '에너지 소비 (PoW 대비)'],
+            datasets: [
+                {
+                    label: 'XRPL',
+                    data: [4, 1500, 0.00001], 
+                    backgroundColor: 'rgba(37, 99, 235, 0.8)',
+                    borderColor: 'rgba(37, 99, 235, 1)',
+                    borderWidth: 1,
+                    stack: 'Stack 0',
+                },
+                {
+                    label: 'PoW (비트코인 예시)',
+                    data: [600, 7, 1],
+                    backgroundColor: 'rgba(249, 115, 22, 0.7)',
+                    borderColor: 'rgba(249, 115, 22, 1)',
+                    borderWidth: 1,
+                    stack: 'Stack 1',
+                },
+                {
+                    label: 'PoS (이더리움 예시)',
+                    data: [15, 20, 0.0001],
+                    backgroundColor: 'rgba(139, 92, 246, 0.7)',
+                    borderColor: 'rgba(139, 92, 246, 1)',
+                    borderWidth: 1,
+                    stack: 'Stack 2',
+                }
+            ]
+        },
+        processSteps: [
+            { id: 'submit', title: '1. 트랜잭션 제출', description: '사용자는 개인키로 트랜잭션에 서명하여 네트워크에 제출합니다. 형식적으로 올바른 트랜잭션은 "후보 트랜잭션"으로 간주됩니다.' },
+            { id: 'propose', title: '2. 검증자 제안', description: '각 검증자는 신뢰하는 다른 검증자(UNL)들과 후보 트랜잭션 목록을 공유하고 비교하며 다음 원장에 포함될 트랜잭션 집합을 제안합니다.' },
+            { id: 'consensus', title: '3. 합의 라운드', description: '검증자들은 반복적인 투표를 통해 단일 트랜잭션 집합에 대한 합의를 형성합니다. 불일치 시, 합의에 필요한 임계값(처음 50%)이 점차 증가하여 논쟁적인 트랜잭션을 제외시킵니다.' },
+            { id: 'validation', title: '4. 원장 유효성 검사', description: '신뢰하는 검증자 중 80% 이상이 특정 트랜잭션 목록에 동의하면, 모든 서버는 이 목록을 기반으로 새로운 원장 버전을 계산하고 그 암호화 해시를 공유합니다.' },
+            { id: 'finality', title: '5. 최종 확정', description: '서버가 신뢰하는 검증자 대다수가 동일한 원장 해시에 동의하면, 해당 원장은 완전히 유효성 검사되고 불변의 상태가 됩니다. 이 원장에 포함된 트랜잭션의 결과는 최종 확정됩니다.' }
+        ],
+        amendments: [
+            { name: 'FeeEscalation', category: 'consensus', description: '네트워크 부하 시 높은 수수료 트랜잭션 우선 처리' },
+            { name: 'NegativeUNL', category: 'consensus', description: '일시적으로 오프라인인 검증자를 쿼럼 계산에서 제외하여 네트워크 안정성 향상' },
+            { name: 'AMM', category: 'feature', description: 'DEX에 자동화된 시장 조성자(AMM) 기능 통합' },
+            { name: 'Clawback', category: 'feature', description: '발행자가 특정 조건 하에 토큰을 회수할 수 있는 기능 도입 (규제 준수 강화)' },
+            { name: 'DID', category: 'feature', description: '탈중앙화 식별자(DID)를 도입하여 디지털 신원 기능 향상' },
+            { name: 'RequireFullyCanonicalSig', category: 'security', description: '모든 트랜잭션에 정식 서명 형식을 의무화하여 트랜잭션 변조 방지' },
+            { name: 'HardenedValidations', category: 'security', description: '검증자가 최신 원장 해시를 증명하는 필드를 추가하여 합의 견고성 강화' }
+        ]
+    };
+
+    const tabs = document.querySelectorAll('.nav-tab');
+    const sections = document.querySelectorAll('.content-section');
+
+    function switchTab(tabButton) {
+        tabs.forEach(t => t.classList.remove('tab-active', 'text-blue-600', 'bg-blue-50'));
+        tabs.forEach(t => t.classList.add('tab-inactive', 'text-gray-500'));
+        
+        tabButton.classList.add('tab-active', 'text-blue-600', 'bg-blue-50');
+        tabButton.classList.remove('tab-inactive', 'text-gray-500');
+
+        const tabId = tabButton.dataset.tab;
+        sections.forEach(s => {
+            s.classList.remove('active');
+            if (s.id === tabId) {
+                s.classList.add('active');
+            }
+        });
+    }
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => switchTab(tab));
+    });
+
+    switchTab(tabs[0]);
+
+    function animateStat(element, start, end, duration, decimals) {
+        let startTime = null;
+        const step = (timestamp) => {
+            if (!startTime) startTime = timestamp;
+            const progress = Math.min((timestamp - startTime) / duration, 1);
+            const value = progress * (end - start) + start;
+            element.innerText = value.toFixed(decimals);
+            if (progress < 1) {
+                window.requestAnimationFrame(step);
+            }
+        };
+        window.requestAnimationFrame(step);
+    }
+
+    function initOverview() {
+        const speedEl = document.getElementById('speed-stat');
+        const tpsEl = document.getElementById('tps-stat');
+        const feeEl = document.getElementById('fee-stat');
+
+        animateStat(speedEl, appData.stats.speed.start, appData.stats.speed.end, appData.stats.speed.duration, appData.stats.speed.decimals);
+        animateStat(tpsEl, appData.stats.tps.start, appData.stats.tps.end, appData.stats.tps.duration, appData.stats.tps.decimals);
+        animateStat(feeEl, appData.stats.fee.start, appData.stats.fee.end, appData.stats.fee.duration, appData.stats.fee.decimals);
+
+        const ctx = document.getElementById('performance-chart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: appData.performanceChart,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                scales: {
+                    x: {
+                        type: 'logarithmic',
+                        ticks: {
+                            callback: function(value, index, values) {
+                                if (value === 1500 || value === 600 || value === 20 || value === 7 || value === 4) return value;
+                                if (value === 1 || value === 0.00001 || value === 0.0001) return value;
+                                return null;
+                            }
+                        },
+                        title: { display: true, text: '성능 (로그 스케일)' }
+                    },
+                    y: { beginAtZero: true }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.x !== null) {
+                                    label += context.parsed.x;
+                                }
+                                return label;
+                            }
+                        }
+                    },
+                    legend: {
+                        position: 'bottom',
+                    }
+                }
+            }
+        });
+    }
+    
+    function initHowItWorks() {
+        const stepsContainer = document.getElementById('process-steps');
+        const titleEl = document.getElementById('process-title');
+        const descEl = document.getElementById('process-description');
+
+        appData.processSteps.forEach(step => {
+            const button = document.createElement('button');
+            button.className = 'step-card w-full text-left p-4 rounded-lg border-2 border-transparent transition-all duration-300 bg-gray-50 hover:bg-gray-100';
+            button.dataset.id = step.id;
+            button.innerHTML = `<p class="font-semibold text-gray-800">${step.title}</p>`;
+            button.addEventListener('click', () => {
+                const allCards = document.querySelectorAll('.step-card');
+                allCards.forEach(card => card.classList.remove('active'));
+                button.classList.add('active');
+                
+                const selectedStep = appData.processSteps.find(s => s.id === step.id);
+                titleEl.textContent = selectedStep.title;
+                descEl.textContent = selectedStep.description;
+            });
+            stepsContainer.appendChild(button);
+        });
+
+        const unlContainer = document.getElementById('unl-visualization');
+        const totalNodes = 35;
+        const coreNodes = 25;
+
+        for (let i = 0; i < totalNodes; i++) {
+            const node = document.createElement('div');
+            node.className = 'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300';
+            if (i < coreNodes) {
+                node.classList.add('bg-blue-500', 'text-white');
+                node.textContent = 'V';
+            } else {
+                 node.classList.add('bg-gray-300');
+            }
+            unlContainer.appendChild(node);
+        }
+    }
+
+    function initSecurity() {
+        const slider = document.getElementById('faulty-slider');
+        const grid = document.getElementById('validator-grid');
+        const statusText = document.getElementById('status-text');
+        const statusDesc = document.getElementById('status-desc');
+        const totalValidators = 100;
+        let validatorElements = [];
+
+        for (let i = 0; i < totalValidators; i++) {
+            const validator = document.createElement('div');
+            validator.className = 'w-full h-4 rounded transition-colors duration-200';
+            grid.appendChild(validator);
+            validatorElements.push(validator);
+        }
+
+        function updateNetworkStatus(faultyPercent) {
+            const isHealthy = faultyPercent < 20;
+            if (isHealthy) {
+                statusText.textContent = '정상 작동';
+                statusText.className = 'px-3 py-1 rounded-full text-white bg-green-500';
+                statusDesc.textContent = '네트워크가 합의를 통해 원장을 정상적으로 생성하고 있습니다.';
+            } else {
+                statusText.textContent = '진행 중단';
+                statusText.className = 'px-3 py-1 rounded-full text-white bg-red-500';
+                statusDesc.textContent = '20% 이상의 검증자 장애로 합의 실패. 잘못된 원장 생성을 막기 위해 네트워크가 안전하게 중단되었습니다.';
+            }
+
+            validatorElements.forEach((el, index) => {
+                if (index < faultyPercent) {
+                    el.className = 'w-full h-4 rounded transition-colors duration-200 bg-red-400';
+                } else {
+                    el.className = 'w-full h-4 rounded transition-colors duration-200 bg-blue-400';
+                }
+            });
+        }
+        
+        slider.addEventListener('input', (e) => {
+            updateNetworkStatus(parseInt(e.target.value));
+        });
+        
+        updateNetworkStatus(0);
+    }
+    
+    function initGovernance() {
+        const tableBody = document.getElementById('amendments-table');
+        const filterBtns = document.querySelectorAll('.amendment-filter-btn');
+
+        function renderTable(filter = 'all') {
+            tableBody.innerHTML = '';
+            const filteredData = (filter === 'all') 
+                ? appData.amendments
+                : appData.amendments.filter(a => a.category === filter);
+
+            filteredData.forEach(amendment => {
+                const row = document.createElement('tr');
+                row.className = "hover:bg-gray-50";
+                
+                let categoryText = '';
+                let categoryColor = '';
+                switch(amendment.category) {
+                    case 'consensus': categoryText = '합의'; categoryColor = 'bg-blue-100 text-blue-800'; break;
+                    case 'feature': categoryText = '기능'; categoryColor = 'bg-green-100 text-green-800'; break;
+                    case 'security': categoryText = '보안'; categoryColor = 'bg-yellow-100 text-yellow-800'; break;
+                }
+
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${amendment.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${categoryColor}">${categoryText}</span></td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${amendment.description}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                filterBtns.forEach(b => b.classList.remove('bg-blue-600', 'text-white'));
+                btn.classList.add('bg-blue-600', 'text-white');
+                renderTable(btn.dataset.filter);
+            });
+        });
+
+        filterBtns[0].classList.add('bg-blue-600', 'text-white');
+        renderTable();
+    }
+
+
+    initOverview();
+    initHowItWorks();
+    initSecurity();
+    initGovernance();
+});
+</script>
+</body>
+</html>
