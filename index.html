@@ -10,12 +10,13 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
     <!-- Chosen Palette: Calm Tech -->
-    <!-- Application Structure Plan: 이 SPA는 복잡한 보고서 내용을 사용자가 쉽게 탐색할 수 있도록 4개의 주제별 탭(핵심 개요, 작동 원리, 보안 모델, 거버넌스)으로 구성된 대시보드 구조를 채택했습니다. 사용자는 선형적인 읽기 방식에서 벗어나 자신의 관심사에 따라 자유롭게 정보를 탐색할 수 있습니다. '핵심 개요'는 동적 수치와 비교 차트로 즉각적인 흥미를 유발하고, '작동 원리'는 인터랙티브 다이어그램으로 복잡한 프로세스를 시각화합니다. '보안 모델'은 시뮬레이션을 통해 추상적인 개념을 체험하게 하며, '거버넌스'는 필터링 가능한 표로 방대한 정보를 체계적으로 제공합니다. 이 구조는 사용자 이해도와 참여도를 극대화하기 위해 설계되었습니다. -->
+    <!-- Application Structure Plan: 이 SPA는 복잡한 보고서 내용을 사용자가 쉽게 탐색할 수 있도록 4개의 주제별 탭(핵심 개요, 작동 원리, 보안 모델, 거버넌스)으로 구성된 대시보드 구조를 채택했습니다. 사용자는 선형적인 읽기 방식에서 벗어나 자신의 관심사에 따라 자유롭게 정보를 탐색할 수 있습니다. '핵심 개요'는 동적 수치와 비교 차트로 즉각적인 흥미를 유발하고, '작동 원리'는 인터랙티브 다이어그램으로 복잡한 프로세스를 시각화합니다. '보안 모델'은 시뮬레이션을 통해 추상적인 개념을 체험하게 하며, '거버넌스'는 필터링 가능한 표로 방대한 정보를 체계적으로 제공합니다. 이번 업데이트에서는 외부 보고서로 연결되는 별도의 탐색 링크를 추가하여 관련 정보에 대한 접근성을 높였습니다. -->
     <!-- Visualization & Content Choices: 
         - 핵심 개요: 보고서의 성능 지표 -> 목표: 정보 전달 및 비교 -> 시각화: 동적 카운터 및 Chart.js 막대 차트 -> 상호작용: 즉각적인 시각적 피드백, 툴팁 -> 정당성: 핵심 장점을 빠르고 명확하게 전달.
         - 작동 원리: 트랜잭션 처리 과정, UNL 개념 -> 목표: 복잡한 프로세스 정리 및 설명 -> 시각화: HTML/CSS 기반 인터랙티브 순서도 -> 상호작용: 클릭 시 상세 설명 표시 -> 정당성: 텍스트 기반 설명을 시각적 단계로 변환하여 이해도 향상.
         - 보안 모델: BFT 장애 허용(20%) -> 목표: 추상적 보안 개념 설명 -> 시각화: HTML/CSS/JS 기반 검증자 네트워크 시뮬레이터 -> 상호작용: 슬라이더 조작으로 장애 비율 변경 및 결과 확인 -> 정당성: 사용자가 직접 조작하며 '안전한 실패' 개념을 체험.
         - 거버넌스: 주요 개정안 목록 -> 목표: 정보 조직화 및 탐색 -> 시각화: 필터링/정렬 가능한 HTML 테이블 -> 상호작용: 카테고리 필터링 -> 정당성: 방대한 목록을 사용자가 원하는 기준에 따라 효율적으로 탐색.
+        - Gemini 심층 보고서 바로가기: 외부 Google Docs 링크 -> 목표: 추가 정보 제공 -> 시각화: 직접 링크 -> 상호작용: 클릭 시 새 탭 열림 -> 정당성: 관련 심층 보고서로의 빠른 접근 제공.
         - 라이브러리: Chart.js 사용. -->
     <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
     <style>
@@ -46,6 +47,7 @@
                 <li class="mr-2"><button class="nav-tab inline-block p-4 border-b-2 rounded-t-lg" data-tab="howitworks">작동 원리</button></li>
                 <li class="mr-2"><button class="nav-tab inline-block p-4 border-b-2 rounded-t-lg" data-tab="security">보안 모델</button></li>
                 <li><button class="nav-tab inline-block p-4 border-b-2 rounded-t-lg" data-tab="governance">거버넌스 & 진화</button></li>
+                <li class="ml-auto"><a href="https://docs.google.com/document/d/1KUw99zdw2_RrPaDQEqT3B1uUGdyBWtxV-mLts_nHXjs/edit?usp=sharing" target="_blank" class="inline-block p-4 border-b-2 border-transparent rounded-t-lg text-gray-600 hover:text-blue-600 hover:border-blue-300">Gemini 심층 보고서 바로가기</a></li>
             </ul>
         </nav>
 
